@@ -8,6 +8,15 @@ BOT_TOKEN = "6365859811:AAF1Aj_VrbdxS9aPED2PqjwRaeEi4fcm_JE"
 
 app = Client("media_info_bot", api_id=API_ID, api_hash=API_HASH, bot_token=BOT_TOKEN)
 
+@app.on_message(filters.command("start"))
+def start_command(client, message: Message):
+    start_message = (
+        "Hello! I am a Media Info Bot. Send me any video-based document or video file, "
+        "and I will provide you with detailed information about it.\n\n"
+        "Just upload a video or send a document, and I'll do the rest!"
+    )
+    client.send_message(chat_id=message.chat.id, text=start_message)
+
 @app.on_message(filters.document | filters.video)
 def get_media_info(client, message: Message):
     media_file = client.download_media(message)
