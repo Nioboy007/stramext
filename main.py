@@ -40,7 +40,7 @@ def get_media_info(client, message: Message):
         client.send_message(
             chat_id=message.chat.id,
             text=f"Media Information:\n\n{info_text}",
-            reply_to_message_id=message.message_id,
+            reply_to_message_id=message.id,
             parse_mode="markdown"
         )
 
@@ -48,7 +48,7 @@ def get_media_info(client, message: Message):
         client.send_message(
             chat_id=message.chat.id,
             text=f"Error retrieving media information: {str(e)}",
-            reply_to_message_id=message.message_id
+            reply_to_message_id=message.id
         )
 
 app.run()
