@@ -1,45 +1,45 @@
 from pyrogram import Client, filters
-import os
-import subprocess
+from pyrogram.types import Message
+from pymediainfo import MediaInfo
 
-API_ID = 10471716
-API_HASH = 'f8a1b21a13af154596e2ff5bed164860'
-BOT_TOKEN = '6365859811:AAF1Aj_VrbdxS9aPED2PqjwRaeEi4fcm_JE'
+API_ID = "10471716"
+API_HASH = "f8a1b21a13af154596e2ff5bed164860"
+BOT_TOKEN = "6365859811:AAF1Aj_VrbdxS9aPED2PqjwRaeEi4fcm_JE"
 
-app = Client("video_bot", api_id=API_ID, api_hash=API_HASH, bot_token=BOT_TOKEN)
+app = Client("media_info_bot", api_id=API_ID, api_hash=API_HASH, bot_token=BOT_TOKEN)
 
-@app.on_message(filters.command("start"))
-def start_message(client, message):
-    message.reply_text("Welcome to the Video Bot! Send me any video file or document, and I'll extract audio and subtitle streams for you.")
+@app.on_message(filters.document | filters.video)
+def get_media_info(client, message: Message):
+    media_file = client.download_media(message)
 
-@app.on_message(filters.document)
-def process_document(client, message):
-    if message.document.mime_type.startswith("video"):
-        video_path = f"downloads/{message.document.file_id}.mp4"
-        audio_path = f"downloads/{message.document.file_id}.mp3"
-        subtitle_path = f"downloads/{message.document.file_id}.srt"
+    try:
+        media_info = MediaInfo.parse(media_file)
+        info_text = ""
 
-        # Download the document
-        document_file = client.download_media(message.document.file_id, file_name=video_path)
+        for track in media_info.tracks:
+            if track.track_type == "General":
+                info_text += f"**File Name:** {track.file_name}\n"
+                info_text += f"**File Size:** {track.other[0].file_size}\n"
+                info_text += f"**Duration:** {track.other[0].duration_string}\n\n"
 
-        # Extract audio using ffmpeg
-        subprocess.run(["ffmpeg", "-i", document_file, "-vn", "-acodec", "libmp3lame", audio_path])
+            elif track.track_type == "Audio" or track.track_type == "Text":
+                info_text += f"**{track.track_type} Stream - {track.track_id}**\n"
+                info_text += f"**Codec:** {track.codec}\n"
+                info_text += f"**Language:** {track.language}\n"
+                info_text += f"**Bitrate:** {track.bit_rate}\n\n"
 
-        # Extract subtitle using ffmpeg
-        subprocess.run(["ffmpeg", "-i", document_file, subtitle_path])
+        client.send_message(
+            chat_id=message.chat.id,
+            text=f"Media Information:\n\n{info_text}",
+            reply_to_message_id=message.message_id,
+            parse_mode="markdown"
+        )
 
-        # Send extracted streams back to the user
-        with open(audio_path, "rb") as audio_file:
-            message.reply_audio(audio_file)
-
-        with open(subtitle_path, "rb") as subtitle_file:
-            message.reply_document(subtitle_file)
-
-        # Clean up temporary files
-        os.remove(document_file)
-        os.remove(audio_path)
-        os.remove(subtitle_path)
-    else:
-        message.reply_text("Unsupported document format. Please send a valid video file or document.")
+    except Exception as e:
+        client.send_message(
+            chat_id=message.chat.id,
+            text=f"Error retrieving media information: {str(e)}",
+            reply_to_message_id=message.message_id
+        )
 
 app.run()
